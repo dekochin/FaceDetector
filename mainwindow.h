@@ -2,6 +2,8 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QStackedWidget>
+#include "ifaceview.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -17,7 +19,10 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
+    void addView(std::shared_ptr<IFaceView> v);
+
 private:
     Ui::MainWindow *ui;
+    QStackedWidget *stackedwidget;
 };
 #endif // MAINWINDOW_H

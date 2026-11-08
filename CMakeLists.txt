@@ -23,6 +23,13 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(FaceDetector
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+        facecontroller.h facecontroller.cpp
+        ifacedetector.h
+        ifaceview.h
+        singleimageview.h singleimageview.cpp singleimageview.ui
+        moc_facedetector.h moc_facedetector.cpp
+        basefaceview.h basefaceview.cpp
+        faceimageentity.h faceimageentity.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET FaceDetector APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
