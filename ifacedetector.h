@@ -8,7 +8,7 @@ class IFaceDetector
 {
 public:
     virtual ~IFaceDetector() = default;
-    virtual QList<FaceInfo> detectFaces(FaceImageEntity& entity) = 0;
+    virtual QList<FaceInfo> detectFaces(const QImage &image) = 0;
 };
 
 #endif // IFACEDETECTOR_H

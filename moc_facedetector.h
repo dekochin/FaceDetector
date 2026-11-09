@@ -7,7 +7,7 @@ class MocFaceDetector : public IFaceDetector
 {
 public:
     MocFaceDetector() = default;
-    QList<FaceInfo> detectFaces(FaceImageEntity& entity) override;
+    QList<FaceInfo> detectFaces(const QImage &image) override;
 };
 
 #endif // MOC_FACEDETECTOR_H

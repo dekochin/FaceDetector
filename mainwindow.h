@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include <QStackedWidget>
+#include <QActionGroup>
+#include <QObject>
 #include "ifaceview.h"
 
 QT_BEGIN_NAMESPACE
@@ -24,5 +26,10 @@ public:
 private:
     Ui::MainWindow *ui;
     QStackedWidget *stackedwidget;
+
+    void setupMenu();
+
+signals:
+    void changeDetector(const QString& name);
 };
 #endif // MAINWINDOW_H

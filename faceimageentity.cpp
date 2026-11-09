@@ -18,6 +18,13 @@ void FaceImageEntity::addDetectResult(const QRect& rect, float conf)
     return;
 }
 
+void FaceImageEntity::resetDetectResult()
+{
+    face.clear();
+
+    return;
+}
+
 
 const QImage& FaceImageEntity::getImage() const
 {

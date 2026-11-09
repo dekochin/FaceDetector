@@ -10,6 +10,10 @@ MainWindow::MainWindow(QWidget *parent)
     stackedwidget->resize(size());
     setCentralWidget(stackedwidget);
     setWindowTitle("FaceDetector");
+
+    setupMenu();
+
+    return;
 }
 
 void MainWindow::addView(std::shared_ptr<IFaceView> v)
@@ -19,9 +23,25 @@ void MainWindow::addView(std::shared_ptr<IFaceView> v)
     return;
 }
 
+void MainWindow::setupMenu()
+{
+    QActionGroup* tools = new QActionGroup(this);
+    tools->setExclusive(true);
 
+    tools->addAction(ui->actionMock);
+    tools->addAction(ui->actionOpenCV_YuNet);
+    ui->actionOpenCV_YuNet->setChecked(true);
+
+    connect(tools, &QActionGroup::triggered, this, [this](QAction* action){
+        emit changeDetector(action->text());
+    });
+
+    return;
+}
 
 MainWindow::~MainWindow()
 {
     delete ui;
+
+    return;
 }

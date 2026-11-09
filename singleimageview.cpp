@@ -47,7 +47,7 @@ void SingleImageView::updateView()
         painter.setPen(pen);
 
         qreal scale_x = qreal(scaledImage.width()) / qreal(currentImage.width());
-        qreal scale_y = qreal(scaledImage.height()) / qreal(currentImage.height()); qDebug() << scaledImage.width() << "," << scaledImage.height();
+        qreal scale_y = qreal(scaledImage.height()) / qreal(currentImage.height());
 
         for (int i = 0; i < faces.size(); i++)
         {

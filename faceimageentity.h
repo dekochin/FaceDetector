@@ -18,6 +18,7 @@ public:
     FaceImageEntity() = default;
     void setImage(const QString& path, const QImage& img);
     void addDetectResult(const QRect& rect, float conf = 0.0);
+    void resetDetectResult();
 
     const QImage& getImage() const;
     const QList<FaceInfo>& getDetectedFaces() const;

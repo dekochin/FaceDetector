@@ -12,6 +12,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 
+
+
 set(PROJECT_SOURCES
         main.cpp
         mainwindow.cpp
@@ -30,6 +32,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         moc_facedetector.h moc_facedetector.cpp
         basefaceview.h basefaceview.cpp
         faceimageentity.h faceimageentity.cpp
+        opencvfacedetector.h opencvfacedetector.cpp
+        detectorfactory.h detectorfactory.cpp
+
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET FaceDetector APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
@@ -50,6 +55,15 @@ else()
 endif()
 
 target_link_libraries(FaceDetector PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+
+# OpenCV
+#open CV include
+set(OpenCV_DIR "C:/opencv/mingw_install/x64/mingw/lib" CACHE PATH "OpenCV build dir" FORCE)
+find_package(OpenCV REQUIRED)
+target_include_directories(FaceDetector PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(FaceDetector PRIVATE ${OpenCV_LIBS})
+
+
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
