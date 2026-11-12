@@ -46,9 +46,9 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path "C:/opencv" -Force
           Write-Host "Downloading pre-built OpenCV from GitHub Releases..."
-
+          
           $opencvZipUrl = "https://github.com/dekochin/FaceDetector/releases/download/opencv-bin-v5.0.0/opencv-mingw.zip"
-
+          
           Invoke-WebRequest -Uri $opencvZipUrl -OutFile "opencv-mingw.zip"
           Expand-Archive -Path "opencv-mingw.zip" -DestinationPath "C:/opencv" -Force
           Remove-Item "opencv-mingw.zip"
@@ -67,13 +67,13 @@ jobs:
         run: |
           cmake --build build --config Release
 
-      # 7. 配布用パッケージング（実行ファイル、Qt DLL、OpenCV DLL、ONNXモデルの同梱）
+      # 7. 配布用パッケージング（実行ファイル、Qt DLL、OpenCV/MinGW DLL、ONNXモデルの同梱）
       - name: Create Standalone Package
         shell: pwsh
         run: |
           $pubDir = "publish"
-          New-Item -ItemType Directory -Path $pubDir
-
+          New-Item -ItemType Directory -Path $pubDir -Force
+          
           # A. 実行ファイルのコピー
           if (Test-Path "build/FaceDetector.exe") {
               Copy-Item "build/FaceDetector.exe" $pubDir/
@@ -82,20 +82,26 @@ jobs:
           } else {
               throw "Executable FaceDetector.exe not found in build directory!"
           }
-
-          # B. YuNetのONNXモデルをHugging Faceの公式ミラーから直接ダウンロード
+          
+          # B. YuNetのONNXモデルをHugging Faceの公式ミラーからダウンロード (LFS対策)
           Write-Host "Downloading YuNet ONNX model from Hugging Face..."
           $onnxUrl = "https://huggingface.co/opencv/face_detection_yunet/resolve/main/face_detection_yunet_2023mar.onnx"
           Invoke-WebRequest -Uri $onnxUrl -OutFile "$pubDir/face_detection_yunet_2023mar.onnx"
-
-          # C. Qtの依存DLLを収集
+          
+          # C. Qtの依存DLL・プラグインを収集
           $qtBin = "${{ env.Qt6_DIR }}/bin"
           & "$qtBin/windeployqt.exe" --release "$pubDir/FaceDetector.exe"
 
           # D. OpenCV (MinGWビルド版) のランタイムDLLをコピー
           Copy-Item "C:/opencv/mingw_install/x64/mingw/bin/libopencv_*.dll" $pubDir/
 
-          # E. ZIP圧縮
+          # E. MinGWコンパイラのランタイムDLLを同梱（起動クラッシュ防止の必須項目）
+          $mingwBin = "C:/msys64/mingw64/bin"
+          Copy-Item "$mingwBin/libstdc++-6.dll" $pubDir/
+          Copy-Item "$mingwBin/libgcc_s_seh-1.dll" $pubDir/
+          Copy-Item "$mingwBin/libwinpthread-1.dll" $pubDir/
+
+          # F. ZIP圧縮
           Compress-Archive -Path "$pubDir/*" -DestinationPath "FaceDetector-Windows-x64.zip"
 
       # 8. 動作確認用の成果物（Artifact）アップロード
