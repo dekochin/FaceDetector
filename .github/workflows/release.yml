@@ -23,23 +23,23 @@ jobs:
           target: 'desktop'
           arch: 'win64_mingw'
 
-      # 2. MSYS2とMinGWツールチェインのセットアップ
+      # 2. MSYS2とMinGWツールチェイン・Ninjaのセットアップ
       - name: Setup MSYS2 MinGW
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
           update: true
-          install: git mingw-w64-x86_64-toolchain cmake make
+          install: git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
 
-      # 3. CMakeの構成 (MinGW Makefiles ジェネレータを指定)
-      - name: Configure CMake (MinGW)
+      # 3. CMakeの構成 (Ninja ジェネレータを指定)
+      - name: Configure CMake (Ninja)
         shell: msys2 {0}
         run: |
-          cmake -B build -S . -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}" `
+          cmake -B build -S . -G "Ninja" -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}" \
             -DOpenCV_DIR="C:/opencv/mingw_install/x64/mingw"
 
-      # 4. アプリケーションのビルド
+      # 4. アプリケーションのビルド (Ninjaを使用)
       - name: Build Application
         shell: msys2 {0}
         run: |
