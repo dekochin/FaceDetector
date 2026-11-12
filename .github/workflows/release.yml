@@ -83,9 +83,9 @@ jobs:
               throw "Executable FaceDetector.exe not found in build directory!"
           }
 
-          # B. YuNetのONNXモデルを公式リポジトリからダウンロード (masterブランチを指定)
-          Write-Host "Downloading YuNet ONNX model..."
-          $onnxUrl = "https://raw.githubusercontent.com/opencv/opencv_extra/master/testdata/dnn/face_detection_yunet_2023mar.onnx"
+          # B. YuNetのONNXモデルをopencv_zooからダウンロード (raw URLを指定)
+          Write-Host "Downloading YuNet ONNX model from opencv_zoo..."
+          $onnxUrl = "https://raw.githubusercontent.com/opencv/opencv_zoo/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
           Invoke-WebRequest -Uri $onnxUrl -OutFile "$pubDir/face_detection_yunet_2023mar.onnx"
 
           # C. Qtの依存DLLを収集
