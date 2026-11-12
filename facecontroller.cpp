@@ -65,7 +65,7 @@ void FaceController::writeEntity(const QList<FaceInfo> &inf, FaceImageEntity &en
 const FaceImageEntity* FaceController::getCurrentEntity() const
 {
     if (!entity.isEmpty()){
-        return &(entity.at(index));
+        return &(entity[index]);
     }
 
     return nullptr;
