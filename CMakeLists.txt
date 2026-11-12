@@ -34,7 +34,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         faceimageentity.h faceimageentity.cpp
         opencvfacedetector.h opencvfacedetector.cpp
         detectorfactory.h detectorfactory.cpp
-        .github/workflows/release.yml
 
     )
 # Define target properties for Android with Qt 6 as:
