@@ -31,7 +31,29 @@ jobs:
           update: true
           install: git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
 
-      # 3. CMakeの構成 (Ninja ジェネレータを指定)
+      # 3. OpenCVのキャッシュ設定
+      - name: Cache OpenCV Binaries
+        id: cache-opencv
+        uses: actions/cache@v4
+        with:
+          path: C:/opencv
+          key: ${{ runner.os }}-opencv-mingw-5.0.0-${{ hashFiles('**/CMakeLists.txt') }}
+
+      # 4. キャッシュに存在しない場合のみ、GitHub ReleasesからOpenCVをダウンロードして展開
+      - name: Download & Setup Custom OpenCV (if not cached)
+        if: steps.cache-opencv.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "C:/opencv" -Force
+          Write-Host "Downloading pre-built OpenCV from GitHub Releases..."
+
+          $opencvZipUrl = "https://github.com/dekochin/FaceDetector/releases/download/opencv-bin-v5.0.0/opencv-mingw.zip"
+
+          Invoke-WebRequest -Uri $opencvZipUrl -OutFile "opencv-mingw.zip"
+          Expand-Archive -Path "opencv-mingw.zip" -DestinationPath "C:/opencv" -Force
+          Remove-Item "opencv-mingw.zip"
+
+      # 5. CMakeの構成 (Ninja ジェネレータを指定)
       - name: Configure CMake (Ninja)
         shell: msys2 {0}
         run: |
@@ -39,20 +61,20 @@ jobs:
             -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}" \
             -DOpenCV_DIR="C:/opencv/mingw_install/x64/mingw"
 
-      # 4. アプリケーションのビルド (Ninjaを使用)
+      # 6. アプリケーションのビルド
       - name: Build Application
         shell: msys2 {0}
         run: |
           cmake --build build --config Release
 
-      # 5. 配布用パッケージング（実行ファイル、Qt DLL、OpenCV DLL、ONNXモデルの同梱）
+      # 7. 配布用パッケージング（実行ファイル、Qt DLL、OpenCV DLL、ONNXモデルの同梱）
       - name: Create Standalone Package
         shell: pwsh
         run: |
           $pubDir = "publish"
           New-Item -ItemType Directory -Path $pubDir
 
-          # A. 実行ファイルのコピー (ビルド成果物の出力先に応じで調整)
+          # A. 実行ファイルのコピー
           if (Test-Path "build/FaceDetector.exe") {
               Copy-Item "build/FaceDetector.exe" $pubDir/
           } elseif (Test-Path "build/src/FaceDetector.exe") {
@@ -76,14 +98,14 @@ jobs:
           # E. ZIP圧縮
           Compress-Archive -Path "$pubDir/*" -DestinationPath "FaceDetector-Windows-x64.zip"
 
-      # 6. 動作確認用の成果物（Artifact）アップロード
+      # 8. 動作確認用の成果物（Artifact）アップロード
       - name: Upload Artifact for Testing
         uses: actions/upload-artifact@v4
         with:
           name: FaceDetector-Package-Test
           path: FaceDetector-Windows-x64.zip
 
-      # 7. GitHub Releasesへの自動アップロード (タグプッシュ時のみ動作)
+      # 9. GitHub Releasesへの自動アップロード (タグプッシュ時のみ動作)
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/v')
