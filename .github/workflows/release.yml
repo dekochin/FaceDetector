@@ -1,0 +1,90 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*' # v1.0.0
+      workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 1. Qtのセットアップ
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.11.2' # Qtバージョン
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2019_64'
+
+      # 2. OpenCVのキャッシュ（ビルド時間の短縮）
+      - name: Cache OpenCV
+        id: cache-opencv
+        uses: actions/cache@v4
+        with:
+          path: C:/opencv
+          key: ${{ runner.os }}-opencv-4.9.0
+
+      # 3. OpenCVのダウンロードと展開（キャッシュがない場合のみ）
+      - name: Download and Extract OpenCV
+        if: steps.cache-opencv.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $opencvVersion = "4.9.0"
+          $url = "https://github.com/opencv/opencv/releases/download/$opencvVersion/opencv-$opencvVersion-windows.exe"
+          Invoke-WebRequest -Uri $url -OutFile "opencv-installer.exe"
+          Start-Process -FilePath "opencv-installer.exe" -ArgumentList "-o C:\ -y" -Wait
+          Remove-Item "opencv-installer.exe"
+
+      # 4. CMakeでリリースビルドの構成
+      - name: Configure CMake
+        run: |
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release `
+            -DOpenCV_DIR="C:/opencv/opencv/build"
+
+      # 5. アプリケーションのビルド
+      - name: Build Application
+        run: |
+          cmake --build build --config Release
+
+      # 6. 配布用パッケージング（実行ファイル、Qt DLL、OpenCV DLL、ONNXモデルの同梱）
+      - name: Create Standalone Package
+        shell: pwsh
+        run: |
+          $pubDir = "publish"
+          New-Item -ItemType Directory -Path $pubDir
+          
+          # A. 実行ファイルのコピー 
+          Copy-Item "build\Desktop_Qt_6_12_0_MinGW_64_bit_Release\FaceDetector.exe" $pubDir/
+          
+          # B. YuNetのONNXモデルを実行ファイルと同じ階層（または指定の相対パス）にコピー
+          if (Test-Path "face_detection_yunet_2023mar.onnx") {
+              Copy-Item "face_detection_yunet_2023mar.onnx" $pubDir/
+          } else {
+              Write-Warning "ONNX model file not found in root directory!"
+          }
+          
+          # C. windeployqt を使ってQtの依存DLLを自動収集
+          & "${{ env.Qt6_DIR }}/bin/windeployqt.exe" --release "$pubDir/FaceDetector.exe"
+
+          # D. OpenCVの実行に必要なDLL (opencv_world系 や dnn/objdetect系) をコピー
+          # ※opencv_worldを使っている場合の例
+          Copy-Item "C:/opencv/opencv/build/x64/vc16/bin/opencv_world*.dll" $pubDir/
+          # 個別モジュール版の場合は必要なものを適宜コピーしてください
+
+          # E. 最終的なZIP圧縮
+          Compress-Archive -Path "$pubDir/*" -DestinationPath "FaceDetector-Windows-x64.zip"
+
+      # 7. GitHub Releasesへの自動アップロード
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: FaceDetector-Windows-x64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
