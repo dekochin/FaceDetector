@@ -53,7 +53,7 @@ jobs:
           Expand-Archive -Path "opencv-mingw.zip" -DestinationPath "C:/opencv" -Force
           Remove-Item "opencv-mingw.zip"
 
-# 5. CMakeの構成 (Ninja ジェネレータを指定)
+      # 5. CMakeの構成 (Ninja ジェネレータを指定、パスはMSYS2形式)
       - name: Configure CMake (Ninja)
         shell: msys2 {0}
         run: |
@@ -61,7 +61,7 @@ jobs:
             -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}" \
             -DOpenCV_DIR="/c/opencv/mingw_install/x64/mingw"
 
-      # 6. アプリケーションのビルド
+      # 6. アプリケーションのビルド (Ninjaを使用)
       - name: Build Application
         shell: msys2 {0}
         run: |
@@ -83,9 +83,9 @@ jobs:
               throw "Executable FaceDetector.exe not found in build directory!"
           }
 
-          # B. YuNetのONNXモデルを公式リポジトリから自動ダウンロードして同梱
+          # B. YuNetのONNXモデルを公式リポジトリからダウンロード (masterブランチを指定)
           Write-Host "Downloading YuNet ONNX model..."
-          $onnxUrl = "https://raw.githubusercontent.com/opencv/opencv_extra/4.x/testdata/dnn/face_detection_yunet_2023mar.onnx"
+          $onnxUrl = "https://raw.githubusercontent.com/opencv/opencv_extra/master/testdata/dnn/face_detection_yunet_2023mar.onnx"
           Invoke-WebRequest -Uri $onnxUrl -OutFile "$pubDir/face_detection_yunet_2023mar.onnx"
 
           # C. Qtの依存DLLを収集
