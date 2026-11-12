@@ -23,14 +23,15 @@ jobs:
           target: 'desktop'
           arch: 'win64_mingw'
 
-      # 2. MSYS2とMinGWツールチェイン・Ninjaのセットアップ
+# 2. MSYS2とMinGWツールチェイン・Ninjaのセットアップ（最適化版）
       - name: Setup MSYS2 MinGW
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
+          # 同期対象を必要最小限（mingw64のみ）に絞ることで通信エラーを回避
           update: true
           install: git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
-
+          
       # 3. OpenCVのキャッシュ設定
       - name: Cache OpenCV Binaries
         id: cache-opencv
