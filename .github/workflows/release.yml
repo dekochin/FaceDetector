@@ -3,8 +3,8 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'
-  workflow_dispatch:
+      - 'v*' # v1.0.0 などのタグがプッシュされたときに自動実行
+  workflow_dispatch: # GitHubのWeb画面から手動実行できるようにする
 
 jobs:
   release:
@@ -14,63 +14,80 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # 1. Qtのセットアップ (MinGW環境用)
       - name: Install Qt
         uses: jurplel/install-qt-action@v3
         with:
-          version: '6.6.1'
+          version: '6.6.1' # お使いのQtバージョンに合わせて変更してください
           host: 'windows'
           target: 'desktop'
-          arch: 'win64_msvc2019_64'
+          arch: 'win64_mingw'
 
-      - name: Cache OpenCV
-        id: cache-opencv
-        uses: actions/cache@v4
+      # 2. MSYS2とMinGWツールチェインのセットアップ
+      - name: Setup MSYS2 MinGW
+        uses: msys2/setup-msys2@v2
         with:
-          path: C:/opencv
-          key: ${{ runner.os }}-opencv-4.9.0
+          msystem: MINGW64
+          update: true
+          install: git mingw-w64-x86_64-toolchain cmake make
 
-      - name: Download and Extract OpenCV
-        if: steps.cache-opencv.outputs.cache-hit != 'true'
-        shell: pwsh
+      # 3. CMakeの構成 (MinGW Makefiles ジェネレータを指定)
+      - name: Configure CMake (MinGW)
+        shell: msys2 {0}
         run: |
-          $opencvVersion = "4.9.0"
-          $url = "https://github.com/opencv/opencv/releases/download/$opencvVersion/opencv-$opencvVersion-windows.exe"
-          Invoke-WebRequest -Uri $url -OutFile "opencv-installer.exe"
-          Start-Process -FilePath "opencv-installer.exe" -ArgumentList "-o C:\ -y" -Wait
-          Remove-Item "opencv-installer.exe"
-
-- name: Configure CMake
-        run: |
-          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release `
+          cmake -B build -S . -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release `
             -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}" `
             -DOpenCV_DIR="C:/opencv/mingw_install/x64/mingw"
 
+      # 4. アプリケーションのビルド
       - name: Build Application
+        shell: msys2 {0}
         run: |
           cmake --build build --config Release
 
+      # 5. 配布用パッケージング（実行ファイル、Qt DLL、OpenCV DLL、ONNXモデルの同梱）
       - name: Create Standalone Package
         shell: pwsh
         run: |
           $pubDir = "publish"
           New-Item -ItemType Directory -Path $pubDir
 
-          # 1. 実行ファイルのコピー
-          Copy-Item "build/src/Release/FaceDetector.exe" $pubDir/
-
-          # 2. ONNXモデルのコピー
-          if (Test-Path "face_detection_yunet_2023mar.onnx") {
-              Copy-Item "face_detection_yunet_2023mar.onnx" $pubDir/
+          # A. 実行ファイルのコピー (ビルド成果物の出力先に応じで調整)
+          if (Test-Path "build/FaceDetector.exe") {
+              Copy-Item "build/FaceDetector.exe" $pubDir/
+          } elseif (Test-Path "build/src/FaceDetector.exe") {
+              Copy-Item "build/src/FaceDetector.exe" $pubDir/
           } else {
-              Write-Warning "ONNX model file not found in root directory!"
+              throw "Executable FaceDetector.exe not found in build directory!"
           }
 
-          # 3. Qtの依存DLLを収集
-          & "${{ env.Qt6_DIR }}/bin/windeployqt.exe" --release "$pubDir/FaceDetector.exe"
+          # B. YuNetのONNXモデルを公式リポジトリから自動ダウンロードして同梱
+          Write-Host "Downloading YuNet ONNX model..."
+          $onnxUrl = "https://raw.githubusercontent.com/opencv/opencv_extra/4.x/testdata/dnn/face_detection_yunet_2023mar.onnx"
+          Invoke-WebRequest -Uri $onnxUrl -OutFile "$pubDir/face_detection_yunet_2023mar.onnx"
 
-          # 4. MinGW環境でインストールされたOpenCVのDLLをコピー
-          # ※ C:/opencv/mingw_install/x64/mingw/bin 内の libopencv_*.dll をすべてコピー
+          # C. Qtの依存DLLを収集
+          $qtBin = "${{ env.Qt6_DIR }}/bin"
+          & "$qtBin/windeployqt.exe" --release "$pubDir/FaceDetector.exe"
+
+          # D. OpenCV (MinGWビルド版) のランタイムDLLをコピー
           Copy-Item "C:/opencv/mingw_install/x64/mingw/bin/libopencv_*.dll" $pubDir/
 
-          # 5. ZIP圧縮
+          # E. ZIP圧縮
           Compress-Archive -Path "$pubDir/*" -DestinationPath "FaceDetector-Windows-x64.zip"
+
+      # 6. 動作確認用の成果物（Artifact）アップロード
+      - name: Upload Artifact for Testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: FaceDetector-Package-Test
+          path: FaceDetector-Windows-x64.zip
+
+      # 7. GitHub Releasesへの自動アップロード (タグプッシュ時のみ動作)
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          files: FaceDetector-Windows-x64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
