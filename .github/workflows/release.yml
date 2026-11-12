@@ -87,14 +87,16 @@ jobs:
               throw "Executable FaceDetector.exe not found in build directory!"
           }
           
-          # B. YuNetのONNXモデルをHugging Faceの公式ミラーからダウンロード (LFS対策)
-          Write-Host "Downloading YuNet ONNX model from Hugging Face..."
-          $onnxUrl = "https://huggingface.co/opencv/face_detection_yunet/resolve/main/face_detection_yunet_2023mar.onnx"
+          # B. YuNetのONNXモデルをLFSのポインタではなく「生のバイナリ」として確実にダウンロードする
+          Write-Host "Downloading raw YuNet ONNX model..."
+          $onnxUrl = "https://huggingface.co/opencv/face_detection_yunet/raw/main/face_detection_yunet_2023mar.onnx"
           Invoke-WebRequest -Uri $onnxUrl -OutFile "$pubDir/face_detection_yunet_2023mar.onnx"
           
-          # C. Qtの依存DLL・プラグインを収集
-          $qtBin = "${{ env.Qt6_DIR }}/bin"
-          & "$qtBin/windeployqt.exe" --release "$pubDir/FaceDetector.exe"
+          # ダウンロードしたファイルが数KBのポインタになっていないかサイズで簡易チェック
+          $fileSize = (Get-Item "$pubDir/face_detection_yunet_2023mar.onnx").Length
+          if ($fileSize -lt 100000) {
+              throw "Downloaded ONNX model is too small ($fileSize bytes). It might be a Git LFS pointer file instead of the actual binary!"
+          }
 
           # D. OpenCV (MinGWビルド版) のランタイムDLLをコピー
           Copy-Item "C:/opencv/mingw_install/x64/mingw/bin/libopencv_*.dll" $pubDir/
