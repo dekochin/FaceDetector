@@ -2,7 +2,8 @@
 
 OpenCVFaceDetector::OpenCVFaceDetector()
 {
-    std::string modelfilepath = "face_detection_yunet_2023mar.onnx";
+    QString appDir = QCoreApplication::applicationDirPath();
+    std::string modelfilepath = QDir(appDir).filePath("face_detection_yunet_2023mar.onnx").toStdString();
 
     try {
         detector = cv::FaceDetectorYN::create(modelfilepath

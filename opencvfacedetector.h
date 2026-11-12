@@ -2,6 +2,8 @@
 #define OPENCVFACEDETECTOR_H
 
 #include "ifacedetector.h"
+#include <QCoreApplication>
+#include <QDir>
 #include <opencv2/opencv.hpp>
 #include <opencv2/objdetect.hpp>
 #include <QDebug>
