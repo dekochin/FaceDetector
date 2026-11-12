@@ -39,10 +39,11 @@ jobs:
           Start-Process -FilePath "opencv-installer.exe" -ArgumentList "-o C:\ -y" -Wait
           Remove-Item "opencv-installer.exe"
 
-      - name: Configure CMake
+- name: Configure CMake
         run: |
           cmake -B build -S . -DCMAKE_BUILD_TYPE=Release `
-            -DOpenCV_DIR="C:/opencv/opencv/build"
+            -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}" `
+            -DOpenCV_DIR="C:/opencv/mingw_install/x64/mingw"
 
       - name: Build Application
         run: |
@@ -53,35 +54,23 @@ jobs:
         run: |
           $pubDir = "publish"
           New-Item -ItemType Directory -Path $pubDir
-          
-          # 実行ファイルのコピー (※FaceDetector.exeの場合)
+
+          # 1. 実行ファイルのコピー
           Copy-Item "build/src/Release/FaceDetector.exe" $pubDir/
-          
-          # ONNXモデルのコピー
+
+          # 2. ONNXモデルのコピー
           if (Test-Path "face_detection_yunet_2023mar.onnx") {
               Copy-Item "face_detection_yunet_2023mar.onnx" $pubDir/
           } else {
               Write-Warning "ONNX model file not found in root directory!"
           }
-          
-          # Qtの依存DLLを収集
+
+          # 3. Qtの依存DLLを収集
           & "${{ env.Qt6_DIR }}/bin/windeployqt.exe" --release "$pubDir/FaceDetector.exe"
 
-          # OpenCVのDLLをコピー
-          Copy-Item "C:/opencv/opencv/build/x64/vc16/bin/opencv_world*.dll" $pubDir/
+          # 4. MinGW環境でインストールされたOpenCVのDLLをコピー
+          # ※ C:/opencv/mingw_install/x64/mingw/bin 内の libopencv_*.dll をすべてコピー
+          Copy-Item "C:/opencv/mingw_install/x64/mingw/bin/libopencv_*.dll" $pubDir/
 
-          # ZIP圧縮
+          # 5. ZIP圧縮
           Compress-Archive -Path "$pubDir/*" -DestinationPath "FaceDetector-Windows-x64.zip"
-
-      - name: Upload Artifact for Testing
-        uses: actions/upload-artifact@v4
-        with:
-          name: FaceDetector-Package-Test
-          path: FaceDetector-Windows-x64.zip
-
-      - name: Upload Release Asset
-        uses: softprops/action-gh-release@v1
-        with:
-          files: FaceDetector-Windows-x64.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
