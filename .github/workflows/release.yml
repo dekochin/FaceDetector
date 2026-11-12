@@ -53,13 +53,13 @@ jobs:
           Expand-Archive -Path "opencv-mingw.zip" -DestinationPath "C:/opencv" -Force
           Remove-Item "opencv-mingw.zip"
 
-      # 5. CMakeの構成 (Ninja ジェネレータを指定)
+# 5. CMakeの構成 (Ninja ジェネレータを指定)
       - name: Configure CMake (Ninja)
         shell: msys2 {0}
         run: |
           cmake -B build -S . -G "Ninja" -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}" \
-            -DOpenCV_DIR="C:/opencv/mingw_install/x64/mingw"
+            -DOpenCV_DIR="/c/opencv/mingw_install/x64/mingw"
 
       # 6. アプリケーションのビルド
       - name: Build Application
