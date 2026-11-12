@@ -23,15 +23,18 @@ jobs:
           target: 'desktop'
           arch: 'win64_mingw'
 
-# 2. MSYS2とMinGWツールチェイン・Ninjaのセットアップ（最適化版）
+      # 2. MSYS2とMinGWツールチェイン・Ninjaのセットアップ（パッケージ絞り込み版）
       - name: Setup MSYS2 MinGW
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          # 同期対象を必要最小限（mingw64のみ）に絞ることで通信エラーを回避
           update: true
-          install: git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
-          
+          install: >-
+            git
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+
       # 3. OpenCVのキャッシュ設定
       - name: Cache OpenCV Binaries
         id: cache-opencv
@@ -54,7 +57,7 @@ jobs:
           Expand-Archive -Path "opencv-mingw.zip" -DestinationPath "C:/opencv" -Force
           Remove-Item "opencv-mingw.zip"
 
-      # 5. CMakeの構成 (Ninja ジェネレータを指定、パスはMSYS2形式)
+      # 5. CMakeの構成 (Ninja ジェネレータを指定)
       - name: Configure CMake (Ninja)
         shell: msys2 {0}
         run: |
@@ -96,11 +99,21 @@ jobs:
           # D. OpenCV (MinGWビルド版) のランタイムDLLをコピー
           Copy-Item "C:/opencv/mingw_install/x64/mingw/bin/libopencv_*.dll" $pubDir/
 
-          # E. MinGWコンパイラのランタイムDLLを同梱（起動クラッシュ防止の必須項目）
-          $mingwBin = "C:/msys64/mingw64/bin"
-          Copy-Item "$mingwBin/libstdc++-6.dll" $pubDir/
-          Copy-Item "$mingwBin/libgcc_s_seh-1.dll" $pubDir/
-          Copy-Item "$mingwBin/libwinpthread-1.dll" $pubDir/
+          # E. MinGWコンパイラのランタイムDLLを動的検索して確実にあらゆる場所から収集
+          $dllNames = @("libstdc++-6.dll", "libgcc_s_seh-1.dll", "libwinpthread-1.dll")
+          foreach ($dll in $dllNames) {
+              $found = Get-ChildItem -Path "C:/msys64" -Filter $dll -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+              if (-not $found) {
+                  $found = Get-ChildItem -Path "${{ env.Qt6_DIR }}" -Filter $dll -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+              }
+              
+              if ($found) {
+                  Copy-Item $found.FullName -Destination $pubDir/
+                  Write-Host "Successfully copied $($found.FullName)"
+              } else {
+                  throw "Required runtime DLL $dll could not be found anywhere!"
+              }
+          }
 
           # F. ZIP圧縮
           Compress-Archive -Path "$pubDir/*" -DestinationPath "FaceDetector-Windows-x64.zip"
